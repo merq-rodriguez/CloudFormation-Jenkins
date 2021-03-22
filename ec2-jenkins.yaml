@@ -1,0 +1,46 @@
+---
+Parameters:
+  KeyPairName:
+    Description: EC2 KeyPair to enable SSH access to the instances.
+    Type: AWS::EC2::KeyPair::KeyName
+    ConstraintDescription: Use the name of an existing EC2 KeyPair
+
+Resources:
+  MySecurityGroupSSH:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow SSH access in port 22
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          FromPort: 22
+          IpProtocol: tcp
+          ToPort: 22
+        - CidrIp: 0.0.0.0/0
+          FromPort: 8080
+          IpProtocol: tcp
+          ToPort: 8080
+
+  MyInstanceJenkins:
+    Type: AWS::EC2::Instance
+    Properties:
+      AvailabilityZone: us-west-1c
+      ImageId: ami-031b673f443c2172c
+      InstanceType: t2.micro
+      SecurityGroups:
+        - !Ref MySecurityGroupSSH
+      KeyName: !Ref KeyPairName
+      UserData: 
+        Fn::Base64: | 
+          #!/bin/bash
+          sudo apt update
+          sudo apt install default-jre --yes
+          wget -q -O - https://pkg.jenkins.io/debian-stable/jenkins.io.key | sudo apt-key add -
+          sudo sh -c 'echo deb http://pkg.jenkins.io/debian-stable binary/ > /etc/apt/sources.list.d/jenkins.list'
+          sudo apt update
+          sudo apt install jenkins --yes
+
+
+  MyElasticIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      InstanceId: !Ref MyInstanceJenkins
